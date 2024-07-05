@@ -10,11 +10,18 @@ body {
 }
 
 .container {
-    background-color: white;
+    width: 95%; /* Ancho máximo ajustado para dispositivos móviles */
+    margin: 20px auto; /* Margen para centrar el contenedor */
     padding: 20px;
-    border-radius: 8px;
+    background: #fff;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-    text-align: center;
+    overflow-x: auto; /* Habilitar desplazamiento horizontal si es necesario */
+}
+
+@media (min-width: 768px) {
+    .container {
+        width: 80%; /* Ancho máximo para pantallas más grandes */
+    }
 }
 
 h1 {

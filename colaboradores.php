@@ -63,6 +63,17 @@ $conn->close();
     <title>Registro de Asistencia</title>
     <link rel="stylesheet" href="styles.css">
     <style>
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            /* Establece la altura máxima del contenedor */
+            overflow-y: auto;
+            /* Permite el desplazamiento vertical cuando sea necesario */
+        }
         .message {
             margin-top: 20px;
             padding: 10px;
@@ -118,21 +129,19 @@ $conn->close();
             <button type="submit">Habilitar Cámara para Escanear QR</button>
         </form>
 
-        <!-- Botón para ir a bloques.php -->
+        <!-- Botón para ir a bloques.php
         <form action="bloques.php" method="get" class="button-container">
             <button type="submit">Administrar Horarios</button>
-        </form>
+        </form> -->
 
         <!-- Botón para ir a index.html -->
         <form action="index.html" method="get" class="button-container">
-            <button type="submit">Ir a Inicio</button>
+            <button type="submit">Volver al Inicio</button>
         </form>
 
         <!-- Mostrar mensajes -->
         <?php if (!empty($message)): ?>
-            <div class="message">
-                <?php echo $message; ?>
-            </div>
+            <div class="message"><?php echo $message; ?></div>
         <?php endif; ?>
     </div>
 </body>

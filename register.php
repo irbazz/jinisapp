@@ -61,6 +61,17 @@ $conn->close();
     <title>Registro de Usuario</title>
     <link rel="stylesheet" href="styles.css">
     <style>
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            /* Establece la altura máxima del contenedor */
+            overflow-y: auto;
+            /* Permite el desplazamiento vertical cuando sea necesario */
+        }
         .message {
             margin-top: 20px;
             padding: 10px;

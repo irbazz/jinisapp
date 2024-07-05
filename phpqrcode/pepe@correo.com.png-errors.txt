@@ -1,4 +1,4 @@
-2024-06-21 03:39:36: empty string!!!2024-06-21 03:41:43: <br />
+2024-07-04 04:06:05: <br />
 <b>Deprecated</b>:  Implicit conversion from float 0.5 to int loses precision in <b>C:\Apache24\htdocs\appjinis\phpqrcode\qrencode.php</b> on line <b>140</b><br />
 <br />
 <b>Deprecated</b>:  Implicit conversion from float 1.5 to int loses precision in <b>C:\Apache24\htdocs\appjinis\phpqrcode\qrencode.php</b> on line <b>140</b><br />

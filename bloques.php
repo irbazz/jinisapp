@@ -4,163 +4,360 @@ $username = "root";
 $password = "admin";
 $dbname = "asistencia_evento";
 
-// conexion con la db
 $conn = new mysqli($servername, $username, $password, $dbname);
 
-// Verificar conexión
 if ($conn->connect_error) {
     die("Conexión fallida: " . $conn->connect_error);
 }
 
-$message = ''; // variable que almacena el mensaje
+$message = ''; // Variable para almacenar los mensajes
 
-// funcion que muestra los horarios de la db
-function obtenerHorariosRegistrados($conn) {
-    $sql = "SELECT * FROM horarios";
-    $result = $conn->query($sql);
-    $horarios = [];
-
-    if ($result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            $horarios[] = $row;
-        }
-    }
-
-    return $horarios;
-}
-
-// para agregar nuevos horarios
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_agregar'])) {
+// Verificar si se ha enviado el formulario de agregar horario
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_agregar_horario'])) {
+    $dia = $_POST['dia'];
+    $bloque = $_POST['bloque'];
     $inicio = $_POST['inicio'];
     $fin = $_POST['fin'];
 
-    if (!empty($inicio) && !empty($fin)) {
-        $sql_insert = "INSERT INTO horarios (inicio, fin) VALUES ('$inicio', '$fin')";
+    $sql = "INSERT INTO horarios (dia, bloque, inicio, fin) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssss", $dia, $bloque, $inicio, $fin);
 
-        if ($conn->query($sql_insert) === TRUE) {
-            $message = "Horario agregado correctamente.";
-        } else {
-            $message = "Error al agregar horario: " . $conn->error;
-        }
+    if ($stmt->execute()) {
+        $message = "Nuevo horario agregado correctamente. <a href='bloques.php'>Volver</a>";
     } else {
-        $message = "Por favor, complete todos los campos.";
+        $message = "Error al agregar el horario: " . $conn->error;
     }
 }
 
-// para eliminar horarios
-if ($_SERVER["REQUEST_METHOD"] == "GET" && isset($_GET['eliminar_id'])) {
-    $horario_id = $_GET['eliminar_id'];
+// Verificar si se ha enviado el formulario de agregar ponente
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_agregar_ponente'])) {
+    $nombre = $_POST['nombre'];
+    $tema = $_POST['tema'];
+    $dia = $_POST['dia_ponente'];
+    $bloque_id = $_POST['bloque_id'];
 
-    if (!empty($horario_id)) {
-        $sql_delete = "DELETE FROM horarios WHERE id='$horario_id'";
+    $sql = "INSERT INTO ponentes (nombre, tema, dia, bloque_id) VALUES (?, ?, ?, ?)";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("ssii", $nombre, $tema, $dia, $bloque_id);
 
-        if ($conn->query($sql_delete) === TRUE) {
-            $message = "Horario eliminado correctamente.";
-            // Redireccionar para evitar reenvío del formulario al actualizar la página (importante)
-            header("Location: bloques.php");
-            exit;
-        } else {
-            $message = "Error al eliminar horario: " . $conn->error;
-        }
+    if ($stmt->execute()) {
+        $message = "Ponente agregado correctamente. <a href='bloques.php'>Volver</a>";
     } else {
-        $message = "ID de horario no válido.";
+        $message = "Error al agregar el ponente: " . $conn->error;
     }
 }
 
-// Obtener horarios después de las operaciones POST
-$horarios = obtenerHorariosRegistrados($conn);
+// Verificar si se ha enviado el formulario de eliminar horario
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_eliminar_horario'])) {
+    $id_horario = $_POST['id_horario'];
 
-// Cerrar conexión
+    $sql = "DELETE FROM horarios WHERE id=?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_horario);
+
+    if ($stmt->execute()) {
+        $message = "Horario eliminado correctamente. <a href='bloques.php'>Volver</a>";
+    } else {
+        $message = "Error al eliminar el horario: " . $conn->error;
+    }
+}
+
+// Verificar si se ha enviado el formulario de eliminar ponente
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_eliminar_ponente'])) {
+    $id_ponente = $_POST['id_ponente'];
+
+    $sql = "DELETE FROM ponentes WHERE id=?";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $id_ponente);
+
+    if ($stmt->execute()) {
+        $message = "Ponente eliminado correctamente. <a href='bloques.php'>Volver</a>";
+    } else {
+        $message = "Error al eliminar el ponente: " . $conn->error;
+    }
+}
+
+// Verificar si se ha enviado el formulario para establecer el mínimo de asistencias
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_min_asistencias'])) {
+    $min_asistencias = intval($_POST['min_asistencias']);
+
+    // Actualizar la aptitud de los usuarios en función del mínimo de asistencias
+    $sql = "UPDATE usuarios u
+            SET apto_certificado = (
+                SELECT IF(COUNT(a.id) >= ?, 1, 0)
+                FROM asistencias a
+                WHERE a.usuario_id = u.id
+            )";
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param("i", $min_asistencias);
+
+    if ($stmt->execute()) {
+        $message = "Aptitud para certificado actualizada correctamente para todos los usuarios. <a href='bloques.php'>Volver</a>";
+    } else {
+        $message = "Error al actualizar la aptitud para certificado: " . $conn->error;
+    }
+}
+
+// Consultas para obtener los horarios, ponentes y usuarios
+$horarios = [];
+$ponentes = [];
+$usuarios = [];
+
+$result = $conn->query("SELECT * FROM horarios");
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $horarios[] = $row;
+    }
+}
+
+$result = $conn->query("SELECT p.*, h.dia, h.bloque FROM ponentes p JOIN horarios h ON p.bloque_id = h.id");
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $ponentes[] = $row;
+    }
+}
+
+$result = $conn->query("SELECT * FROM usuarios");
+if ($result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $usuarios[] = $row;
+    }
+}
+
 $conn->close();
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Administrar Bloques</title>
+    <title>Administrar Bloques y Ponentes</title>
     <link rel="stylesheet" href="styles.css">
     <style>
-        .eliminar-btn {
-            background-color: red;
-            color: white;
-            padding: 6px 12px;
-            border: none;
-            cursor: pointer;
-            width: 100px;
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
         }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-height: 80vh;
+            /* Establece la altura máxima del contenedor */
+            overflow-y: auto;
+            /* Permite el desplazamiento vertical cuando sea necesario */
+        }
+
         .message {
             margin-top: 20px;
             padding: 10px;
             border: 1px solid #ccc;
             background-color: #f9f9f9;
         }
-    
+
+        .button-container {
+            margin-bottom: 10px;
+        }
+
         .image-container {
             display: flex;
             justify-content: center;
             margin-bottom: 20px;
         }
+
         .image-container img {
             margin: 0 20px;
             max-width: 170px;
             height: auto;
         }
-    </style>
-    <script>
-        function confirmarEliminar(id) {
-            if (confirm("¿Estás seguro de eliminar este horario?")) {
-                window.location.href = "bloques.php?eliminar_id=" + id; // redirige con el id a eliminar (admin)
+
+        form {
+            margin-bottom: 30px;
+        }
+
+        form label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+
+        form input,
+        form select,
+        form button {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        form button {
+            background: #5cb85c;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        form button:hover {
+            background: #4cae4c;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        ul li {
+            padding: 10px;
+            border: 1px solid #ddd;
+            margin-bottom: 10px;
+            background: #f9f9f9;
+        }
+
+        ul li form {
+            display: inline;
+        }
+
+        ul li button {
+            background: #d9534f;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        ul li button:hover {
+            background: #c9302c;
+        }
+
+        h1,
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        h1 {
+            margin-bottom: 20px;
+        }
+
+        h2 {
+            margin-top: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                max-width: 95%;
             }
         }
-    </script>
+    </style>
 </head>
+
 <body>
     <div class="container">
-         <!-- contenedor de las imagenes -->
-         <div class="image-container">
+        <!-- Contenedor de las imágenes -->
+        <div class="image-container">
             <img src="imagen1.png" alt="Imagen 1">
             <img src="imagen2.png" alt="Imagen 2">
         </div>
-        <h1>Administrar Bloques</h1>
+        <h1>Administrar Bloques y Ponentes</h1>
 
-        <!-- formulario para agregar nuevo horario -->
+        <!-- Formulario para agregar horario -->
+        <h2>Agregar Horario</h2>
         <form action="bloques.php" method="post">
+            <label for="dia">Día:</label>
+            <input type="text" id="dia" name="dia" required>
+            <label for="bloque">Bloque:</label>
+            <input type="text" id="bloque" name="bloque" required>
             <label for="inicio">Inicio:</label>
             <input type="time" id="inicio" name="inicio" required>
             <label for="fin">Fin:</label>
             <input type="time" id="fin" name="fin" required>
-            <button type="submit" name="submit_agregar">Agregar Horario</button>
+            <button type="submit" name="submit_agregar_horario">Agregar Horario</button>
         </form>
 
-        <br>
-
-        <!-- lista de horarios registrados -->
-        <?php
-        if (!empty($horarios)) {
-            echo "<h2>Horarios Registrados:</h2>";
-            echo "<ul>";
-            foreach ($horarios as $horario) {
-                echo "<li>{$horario['inicio']} - {$horario['fin']} <button class='eliminar-btn' onclick='confirmarEliminar({$horario['id']})'>Eliminar</button></li>";
-            }
-            echo "</ul>";
-        } else {
-            echo "<p>No hay horarios registrados.</p>";
-        }
-        ?>
-
-        <!-- redirecciona a colaboradores.php -->
-        <form action="colaboradores.php" method="get">
-            <button type="submit">Registro de Asistencia</button>
+        <!-- Formulario para agregar ponente -->
+        <h2>Agregar Ponente</h2>
+        <form action="bloques.php" method="post">
+            <label for="nombre">Nombre:</label>
+            <input type="text" id="nombre" name="nombre" required>
+            <label for="tema">Tema:</label>
+            <input type="text" id="tema" name="tema" required>
+            <label for="dia_ponente">Día:</label>
+            <select id="dia_ponente" name="dia_ponente" required>
+                <option value="Lunes">Lunes</option>
+                <option value="Martes">Martes</option>
+                <option value="Miércoles">Miércoles</option>
+                <option value="Jueves">Jueves</option>
+                <option value="Viernes">Viernes</option>
+            </select>
+            <label for="bloque_id">Bloque:</label>
+            <select id="bloque_id" name="bloque_id" required>
+                <?php foreach ($horarios as $horario): ?>
+                    <option value="<?php echo $horario['id']; ?>">
+                        <?php echo $horario['dia'] . ', Bloque ' . $horario['bloque']; ?>
+                    </option>
+                <?php endforeach; ?>
+            </select>
+            <button type="submit" name="submit_agregar_ponente">Agregar Ponente</button>
         </form>
 
-        <!-- muestra los mensajes en un box-->
+        <!-- Formulario para establecer el mínimo de asistencias -->
+        <h2>Establecer Mínimo de Asistencias para Certificado</h2>
+        <form action="bloques.php" method="post">
+            <label for="min_asistencias">Mínimo de Asistencias:</label>
+            <input type="number" id="min_asistencias" name="min_asistencias" required>
+            <button type="submit" name="submit_min_asistencias">Establecer Mínimo</button>
+        </form>
+
+        <!-- Botón para ir a index.html -->
+        <form action="index.html" method="get" class="button-container">
+            <button type="submit">Volver al Inicio</button>
+        </form>
+        
+        <!-- Mensaje de confirmación o error -->
         <?php if (!empty($message)): ?>
             <div class="message">
                 <?php echo $message; ?>
             </div>
         <?php endif; ?>
+
+        <!-- Lista de horarios -->
+        <h2>Horarios</h2>
+        <ul>
+            <?php foreach ($horarios as $horario): ?>
+                <li>
+                    <?php echo $horario['dia'] . ', Bloque ' . $horario['bloque']; ?>
+                    <form action="bloques.php" method="post" style="display: inline;">
+                        <input type="hidden" name="id_horario" value="<?php echo $horario['id']; ?>">
+                        <button type="submit" name="submit_eliminar_horario">Eliminar</button>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
+
+        <!-- Lista de ponentes -->
+        <h2>Ponentes</h2>
+        <ul>
+            <?php foreach ($ponentes as $ponente): ?>
+                <li>
+                    <?php echo $ponente['nombre'] . ' - ' . $ponente['tema'] . ' - ' . $ponente['dia'] . ', Bloque ' . $ponente['bloque']; ?>
+                    <form action="bloques.php" method="post" style="display: inline;">
+                        <input type="hidden" name="id_ponente" value="<?php echo $ponente['id']; ?>">
+                        <button type="submit" name="submit_eliminar_ponente">Eliminar</button>
+                    </form>
+                </li>
+            <?php endforeach; ?>
+        </ul>
     </div>
 </body>
+
 </html>
